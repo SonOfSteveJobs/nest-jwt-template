@@ -1,5 +1,5 @@
 import { PrismaService } from '@/prisma/prisma.service';
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { CreateAuthDto } from './dto';
 import * as argon2 from "argon2";
 import { Tokens } from './types';
@@ -72,9 +72,37 @@ export class AuthService {
         return tokens;
     }
 
-    async signin() { }
+    async signin(authDto: CreateAuthDto): Promise<Tokens> {
+        const user = await this.prisma.user.findUnique({
+            where: {
+                email: authDto.email
+            }
+        });
 
-    async logout() { }
+        if (!user) throw new ForbiddenException('No users with such email');
+
+        const passwordMatch = await argon2.verify(user.hashedPassword, authDto.password);
+        if (!passwordMatch) throw new ForbiddenException('Wrong password');
+
+        const tokens = await this.generateTokens(user.id, user.email);
+        await this.updateRefreshTokenInDb(user.id, tokens.refresh_token);
+
+        return tokens;
+    }
+
+    async logout(userId: number) {
+        await await this.prisma.user.updateMany({
+            where: {
+                id: userId,
+                hashedRefreshToken: {
+                    not: null
+                }
+            },
+            data: {
+                hashedRefreshToken: null
+            }
+        })
+    }
 
     async refreshTokens() { }
 }
