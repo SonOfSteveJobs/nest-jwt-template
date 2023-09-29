@@ -4,6 +4,8 @@ import { CreateAuthDto } from './dto';
 import { Tokens } from './types';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
+import { AccessTokenGuard, RefreshTokenGuard } from './guards';
+import { GetCurrentUser, GetCurrentUserId } from './decorators';
 
 @Controller('auth')
 export class AuthController {
@@ -21,19 +23,20 @@ export class AuthController {
         return this.authService.signin(authDto);
     }
 
-    @UseGuards(AuthGuard('access-jwt'))
+    @UseGuards(AccessTokenGuard)
     @Post('logout')
     @HttpCode(HttpStatus.OK)
-    logout(@Req() req: Request) {
-        const user = req.user;
-        return this.authService.logout(user['id']);
+    logout(@GetCurrentUserId() userId: number): Promise<boolean> {
+        return this.authService.logout(userId);
     }
 
-    @UseGuards(AuthGuard('refresh-jwt'))
+    @UseGuards(RefreshTokenGuard)
     @Post('refresh')
     @HttpCode(HttpStatus.OK)
-    refreshTokens(@Req() req: Request) {
-        const user = req.user;
-        return this.authService.refreshTokens(user['id'], user['refreshToken']);
+    refreshTokens(
+        @GetCurrentUserId() userId: number,
+        @GetCurrentUser('refreshToken') refreshToken: string,
+    ): Promise<Tokens> {
+        return this.authService.refreshTokens(userId, refreshToken);
     }
 }

@@ -91,7 +91,7 @@ export class AuthService {
         return this.updateTokens(user.id, user.email);
     }
 
-    async logout(userId: number) {
+    async logout(userId: number): Promise<boolean> {
         await await this.prisma.user.updateMany({
             where: {
                 id: userId,
@@ -103,6 +103,7 @@ export class AuthService {
                 hashedRefreshToken: null
             }
         })
+        return true;
     }
 
     async refreshTokens(userId: number, refreshToken: string) {
