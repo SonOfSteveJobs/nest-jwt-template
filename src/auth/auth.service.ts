@@ -92,7 +92,7 @@ export class AuthService {
     }
 
     async logout(userId: number): Promise<boolean> {
-        await await this.prisma.user.updateMany({
+        await this.prisma.user.updateMany({
             where: {
                 id: userId,
                 hashedRefreshToken: {
@@ -113,7 +113,7 @@ export class AuthService {
             }
         });
 
-        if (!user) throw new ForbiddenException('No user');
+        if (!user || !user.hashedRefreshToken) throw new ForbiddenException('No user');
 
         const refreshTokenMatch = await argon2.verify(user.hashedRefreshToken, refreshToken);
 
