@@ -56,6 +56,13 @@ export class AuthService {
         })
     }
 
+    async updateTokens(id, email) {
+        const tokens = await this.generateTokens(id, email);
+        await this.updateRefreshTokenInDb(id, tokens.refresh_token);
+
+        return tokens;
+    }
+
     async signup(authDto: CreateAuthDto): Promise<Tokens> {
         const hashedPassword = await argon2.hash(authDto.password);
 
@@ -66,10 +73,7 @@ export class AuthService {
             }
         });
 
-        const tokens = await this.generateTokens(user.id, user.email);
-        await this.updateRefreshTokenInDb(user.id, tokens.refresh_token);
-
-        return tokens;
+        return this.updateTokens(user.id, user.email);
     }
 
     async signin(authDto: CreateAuthDto): Promise<Tokens> {
@@ -84,10 +88,7 @@ export class AuthService {
         const passwordMatch = await argon2.verify(user.hashedPassword, authDto.password);
         if (!passwordMatch) throw new ForbiddenException('Wrong password');
 
-        const tokens = await this.generateTokens(user.id, user.email);
-        await this.updateRefreshTokenInDb(user.id, tokens.refresh_token);
-
-        return tokens;
+        return this.updateTokens(user.id, user.email);
     }
 
     async logout(userId: number) {
@@ -104,5 +105,19 @@ export class AuthService {
         })
     }
 
-    async refreshTokens() { }
+    async refreshTokens(userId: number, refreshToken: string) {
+        const user = await this.prisma.user.findUnique({
+            where: {
+                id: userId,
+            }
+        });
+
+        if (!user) throw new ForbiddenException('No user');
+
+        const refreshTokenMatch = await argon2.verify(user.hashedRefreshToken, refreshToken);
+
+        if (!refreshTokenMatch) throw new ForbiddenException('Refresh token is invalid');
+
+        return this.updateTokens(user.id, user.email);
+    }
 }
