@@ -8,7 +8,7 @@ async function start() {
 
   (await app).useGlobalPipes(new ValidationPipe());
   (await app).setGlobalPrefix('api');
-  (await app).enableCors;
+  (await app).enableCors();
 
   (await app).listen(PORT, () => console.log(`Server started on port ${PORT}`));
 
